@@ -859,7 +859,18 @@ masthead model =
             , h1 [] [ text "Single Track" ]
             , p [ HA.class "lede" ] [ text "Run trains on one track without a collision." ]
             ]
-        , button [ HA.class "theme-toggle", HE.onClick ToggleTheme, HA.type_ "button" ]
+        , button
+            [ HA.class "theme-toggle"
+            , HE.onClick ToggleTheme
+            , HA.type_ "button"
+            , HA.title
+                (if isDark model then
+                    "Switch to the paper chart (light)"
+
+                 else
+                    "Switch to the cyanotype chart (dark)"
+                )
+            ]
             [ text
                 (if isDark model then
                     "Paper"
@@ -1143,7 +1154,7 @@ knobBar model lvl =
                 , span [ HA.class "knob-bar-name" ] [ strong [] [ text t.name ], text (" " ++ what) ]
                 , span [ HA.class "stepper" ]
                     [ button [ HA.type_ "button", HE.onClick (Nudge model.selected model.knob -1), HA.disabled (value <= lo), HA.attribute "aria-label" (t.name ++ " " ++ what ++ ": one minute less") ] [ text "−" ]
-                    , Html.output [] [ text shown ]
+                    , Html.output [ HA.attribute "aria-live" "polite" ] [ text shown ]
                     , button [ HA.type_ "button", HE.onClick (Nudge model.selected model.knob 1), HA.disabled (value >= hi), HA.attribute "aria-label" (t.name ++ " " ++ what ++ ": one minute more") ] [ text "+" ]
                     ]
                 ]
