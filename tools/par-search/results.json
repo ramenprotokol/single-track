@@ -1,0 +1,473 @@
+{
+ "1": {
+  "par": 3,
+  "plan": [
+   {
+    "dep": 0,
+    "dwells": [
+     3
+    ]
+   },
+   {
+    "dep": 3,
+    "dwells": [
+     0
+    ]
+   }
+  ],
+  "initConflicts": 1,
+  "initLate": 0,
+  "optimal": 1,
+  "truncated": false
+ },
+ "2": {
+  "par": 2,
+  "plan": [
+   {
+    "dep": 0,
+    "dwells": [
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     2,
+     0
+    ]
+   }
+  ],
+  "initConflicts": 1,
+  "initLate": 0,
+  "optimal": 1,
+  "truncated": false
+ },
+ "3": {
+  "par": 6,
+  "plan": [
+   {
+    "dep": 0,
+    "dwells": [
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     6,
+     0
+    ]
+   }
+  ],
+  "initConflicts": 1,
+  "initLate": 0,
+  "optimal": 1,
+  "truncated": false
+ },
+ "4": {
+  "par": 22,
+  "plan": [
+   {
+    "dep": 0,
+    "dwells": [
+     16
+    ]
+   },
+   {
+    "dep": 16,
+    "dwells": [
+     0
+    ]
+   }
+  ],
+  "initConflicts": 2,
+  "initLate": 0,
+  "optimal": 1,
+  "truncated": false
+ },
+ "5": {
+  "par": 16,
+  "plan": [
+   {
+    "dep": 0,
+    "dwells": [
+     3,
+     0
+    ]
+   },
+   {
+    "dep": 18,
+    "dwells": [
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     0,
+     0
+    ]
+   }
+  ],
+  "initConflicts": 4,
+  "initLate": 0,
+  "optimal": 2,
+  "truncated": false
+ },
+ "6": {
+  "par": 40,
+  "plan": [
+   {
+    "dep": 0,
+    "dwells": [
+     18
+    ]
+   },
+   {
+    "dep": 16,
+    "dwells": [
+     11
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     1
+    ]
+   }
+  ],
+  "initConflicts": 3,
+  "initLate": 0,
+  "optimal": 1,
+  "truncated": false
+ },
+ "7": {
+  "par": 14,
+  "plan": [
+   {
+    "dep": 0,
+    "dwells": [
+     2,
+     2,
+     2
+    ]
+   },
+   {
+    "dep": 10,
+    "dwells": [
+     2,
+     3,
+     6
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     0,
+     3,
+     0
+    ]
+   }
+  ],
+  "initConflicts": 4,
+  "initLate": 0,
+  "optimal": 1,
+  "truncated": false
+ },
+ "8": {
+  "par": 11,
+  "plan": [
+   {
+    "dep": 10,
+    "dwells": [
+     0,
+     4,
+     4
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     3
+    ]
+   },
+   {
+    "dep": 25,
+    "dwells": [
+     0
+    ]
+   }
+  ],
+  "initConflicts": 3,
+  "initLate": 0,
+  "optimal": 1,
+  "truncated": false
+ },
+ "9": {
+  "par": 25,
+  "plan": [
+   {
+    "dep": 5,
+    "dwells": [
+     0,
+     1,
+     2
+    ]
+   },
+   {
+    "dep": 11,
+    "dwells": [
+     4,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 20,
+    "dwells": [
+     0,
+     7,
+     0
+    ]
+   }
+  ],
+  "initConflicts": 6,
+  "initLate": 0,
+  "optimal": 1,
+  "truncated": false
+ },
+ "10": {
+  "par": 23,
+  "plan": [
+   {
+    "dep": 0,
+    "dwells": [
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "dep": 15,
+    "dwells": [
+     0,
+     0,
+     14,
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     0,
+     5,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 20,
+    "dwells": [
+     5,
+     1,
+     1,
+     1
+    ]
+   }
+  ],
+  "initConflicts": 5,
+  "initLate": 0,
+  "optimal": 1,
+  "truncated": false
+ },
+ "11": {
+  "par": 40,
+  "plan": [
+   {
+    "dep": 12,
+    "dwells": [
+     4,
+     7,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 12,
+    "dwells": [
+     4,
+     3,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 38,
+    "dwells": [
+     0,
+     0
+    ]
+   }
+  ],
+  "initConflicts": 12,
+  "initLate": 0,
+  "optimal": 1,
+  "truncated": false
+ },
+ "12": {
+  "par": 88,
+  "plan": [
+   {
+    "dep": 20,
+    "dwells": [
+     0,
+     0,
+     0,
+     5
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     29,
+     2,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     1,
+     1,
+     7,
+     1
+    ]
+   },
+   {
+    "dep": 52,
+    "dwells": [
+     9,
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 40,
+    "dwells": [
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  ],
+  "initConflicts": 10,
+  "initLate": 0,
+  "optimal": 2,
+  "truncated": false
+ },
+ "13": {
+  "par": 119,
+  "plan": [
+   {
+    "dep": 10,
+    "dwells": [
+     0,
+     14,
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     19,
+     3,
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "dep": 20,
+    "dwells": [
+     15,
+     6,
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 30,
+    "dwells": [
+     0,
+     12,
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "dep": 0,
+    "dwells": [
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   {
+    "dep": 36,
+    "dwells": [
+     16,
+     5,
+     0,
+     0,
+     0
+    ]
+   }
+  ],
+  "initConflicts": 17,
+  "initLate": 0,
+  "optimal": 4,
+  "truncated": false
+ }
+}

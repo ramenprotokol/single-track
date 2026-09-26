@@ -1,0 +1,23 @@
+{
+  "name": "single-track",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A timetable puzzle: run trains on one track without a collision. Written in Elm.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "npm run test:elm && npm run build && npm run test:e2e",
+    "test:elm": "elm-test",
+    "test:e2e": "node --test \"e2e/*.test.mjs\"",
+    "serve": "node scripts/serve.mjs"
+  },
+  "devDependencies": {
+    "elm": "0.19.1-6",
+    "elm-test": "0.19.1-revision17",
+    "terser": "5.44.1"
+  }
+}
