@@ -1,0 +1,1057 @@
+/* Single Track: an 1880s graphic train timetable on aged paper, and its
+   cyanotype twin for dark mode. Every colour is a token on :root. */
+
+:root {
+  --paper: #efe4cb;
+  --paper-deep: #e4d5b3;
+  --paper-edge: #d6c29a;
+  --ink: #2a2118;
+  --ink-soft: #594733;
+  --rule: #3a2e22;
+  --grid: rgba(96, 72, 44, 0.26);
+  --grid-half: rgba(96, 72, 44, 0.38);
+  --grid-hour: rgba(70, 50, 30, 0.62);
+  --alarm: #a8231b;
+  --good: #1f5a3a;
+  --cursor: #57534e;
+  --cursor-band: rgba(87, 83, 78, 0.14);
+  --focus: #2c4d8c;
+  --stamp: #8e2a1f;
+  --ink-0: #7a1f24; /* oxblood */
+  --ink-1: #1e5a3c; /* bottle green */
+  --ink-2: #3b5378; /* slate blue */
+  --ink-3: #93630d; /* ochre */
+  --ink-4: #6b4a2b; /* umber */
+  --ink-5: #5e3a63; /* plum */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .36 0 0 0 0 .26 0 0 0 0 .13 0 0 0 .55 -.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --foxing: rgba(150, 105, 45, 0.22);
+  --display: "IM Fell English SC", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --text: "EB Garamond", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f3355;
+    --paper-deep: #0b2a48;
+    --paper-edge: #174570;
+    --ink: #e9f1f7;
+    --ink-soft: #bcd0e2;
+    --rule: #d9e6f1;
+    --grid: rgba(205, 228, 246, 0.16);
+    --grid-half: rgba(205, 228, 246, 0.26);
+    --grid-hour: rgba(222, 238, 250, 0.46);
+    --alarm: #ff8f70;
+    --good: #a3e0bd;
+    --cursor: #ffffff;
+    --cursor-band: rgba(255, 255, 255, 0.12);
+    --focus: #ffd27a;
+    --stamp: #ffb199;
+    --ink-0: #f4aaa2;
+    --ink-1: #9fdcb6;
+    --ink-2: #bdd3f8;
+    --ink-3: #f1d07d;
+    --ink-4: #e0c4a4;
+    --ink-5: #dcb9e6;
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .85 0 0 0 0 .93 0 0 0 0 1 0 0 0 .5 -.22'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    --foxing: rgba(3, 18, 36, 0.55);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #0f3355;
+  --paper-deep: #0b2a48;
+  --paper-edge: #174570;
+  --ink: #e9f1f7;
+  --ink-soft: #bcd0e2;
+  --rule: #d9e6f1;
+  --grid: rgba(205, 228, 246, 0.16);
+  --grid-half: rgba(205, 228, 246, 0.26);
+  --grid-hour: rgba(222, 238, 250, 0.46);
+  --alarm: #ff8f70;
+  --good: #a3e0bd;
+  --cursor: #ffffff;
+  --cursor-band: rgba(255, 255, 255, 0.12);
+  --focus: #ffd27a;
+  --stamp: #ffb199;
+  --ink-0: #f4aaa2;
+  --ink-1: #9fdcb6;
+  --ink-2: #bdd3f8;
+  --ink-3: #f1d07d;
+  --ink-4: #e0c4a4;
+  --ink-5: #dcb9e6;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .85 0 0 0 0 .93 0 0 0 0 1 0 0 0 .5 -.22'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --foxing: rgba(3, 18, 36, 0.55);
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--paper);
+  background-image: var(--grain), radial-gradient(ellipse 120% 90% at 50% 35%, transparent 60%, var(--foxing) 100%);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 18px;
+  line-height: 1.45;
+  overflow-x: hidden;
+}
+
+.noscript {
+  padding: 2rem;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+kbd {
+  font-family: var(--text);
+  font-size: 0.82em;
+  font-variant-numeric: lining-nums;
+  border: 1px solid var(--ink-soft);
+  border-bottom-width: 2px;
+  border-radius: 2px;
+  padding: 0 0.3em;
+  margin: 0 0.1em;
+}
+
+.page {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+}
+
+/* ---------- masthead ---------- */
+
+.masthead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 4px double var(--rule);
+  padding-bottom: 12px;
+}
+
+.kicker {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+}
+
+h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(38px, 6vw, 64px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.lede {
+  margin: 6px 0 0;
+  font-style: italic;
+  font-size: 19px;
+  color: var(--ink-soft);
+}
+
+.theme-toggle,
+.controls button,
+.notice button {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 1px;
+  padding: 7px 14px;
+  min-height: 40px;
+  font-family: var(--display);
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px var(--paper-edge);
+}
+
+.theme-toggle:hover,
+.controls button:hover:not(:disabled),
+.notice button:hover {
+  background: var(--paper-deep);
+}
+
+.controls button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.controls button.primary {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 3px var(--paper);
+  min-width: 112px;
+}
+
+.controls button.primary:hover {
+  background: var(--ink-soft);
+}
+
+/* ---------- plates ---------- */
+
+.plates ol {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.plate-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 36px;
+  padding: 2px 8px;
+  border: 1px solid var(--paper-edge);
+  text-decoration: none;
+  font-family: var(--display);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  position: relative;
+}
+
+.plate-link:hover {
+  border-color: var(--rule);
+}
+
+.plate-link.current {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.plate-link.solved::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--good);
+}
+
+.plate-link.current.solved::after {
+  background: var(--paper);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 8px 12px;
+  border: 1px dashed var(--rule);
+  background: var(--paper-deep);
+}
+
+.notice p {
+  margin: 0;
+  font-style: italic;
+}
+
+/* ---------- desk ---------- */
+
+.desk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 28px;
+  margin-top: 20px;
+  align-items: start;
+}
+
+.sheet {
+  min-width: 0;
+  border: 1px solid var(--rule);
+  outline: 1px solid var(--rule);
+  outline-offset: 4px;
+  padding: 18px 20px 20px;
+  margin: 5px;
+}
+
+.plate-head h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(26px, 3.4vw, 36px);
+  line-height: 1.1;
+}
+
+.plate-no {
+  margin: 0 0 2px;
+  font-family: var(--display);
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--ink-soft);
+}
+
+.plate-record {
+  letter-spacing: 0.04em;
+}
+
+.brief {
+  margin: 8px 0 0;
+  max-width: 62ch;
+  font-style: italic;
+}
+
+figure {
+  margin: 0;
+}
+
+.chart-figure {
+  margin-top: 14px;
+}
+
+.chart-surface {
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  border-radius: 1px;
+}
+
+.chart-surface.dragging {
+  cursor: ew-resize;
+}
+
+.chart-caption {
+  margin-top: 4px;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+svg.marey,
+svg.survey {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* ---------- the Marey chart ---------- */
+
+.marey .grid {
+  stroke: var(--grid);
+  stroke-width: 0.6;
+}
+
+.marey .grid-half {
+  stroke: var(--grid-half);
+  stroke-width: 0.8;
+}
+
+.marey .grid-hour {
+  stroke: var(--grid-hour);
+  stroke-width: 1.1;
+}
+
+.plot-frame {
+  fill: none;
+  stroke: var(--rule);
+  stroke-width: 1.2;
+}
+
+.hour-label {
+  font-family: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  fill: var(--ink);
+  font-variant-numeric: lining-nums;
+}
+
+.minute-label {
+  font-family: var(--text);
+  font-style: italic;
+  font-size: 11px;
+  fill: var(--ink-soft);
+}
+
+.rule {
+  stroke: var(--rule);
+}
+
+.rule-terminus {
+  stroke-width: 1.7;
+}
+
+.rule-loop {
+  stroke-width: 0.8;
+}
+
+.rule-halt {
+  stroke-width: 0.9;
+  stroke-dasharray: 5 3;
+}
+
+.station-name {
+  font-family: var(--display);
+  font-size: 15px;
+  fill: var(--ink);
+  letter-spacing: 0.02em;
+}
+
+.station-note {
+  font-family: var(--text);
+  font-style: italic;
+  font-size: 12px;
+  fill: var(--ink-soft);
+}
+
+.ink-0 { --k: var(--ink-0); }
+.ink-1 { --k: var(--ink-1); }
+.ink-2 { --k: var(--ink-2); }
+.ink-3 { --k: var(--ink-3); }
+.ink-4 { --k: var(--ink-4); }
+.ink-5 { --k: var(--ink-5); }
+
+.thread {
+  fill: none;
+  stroke: var(--k);
+  stroke-width: 2.1;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.thread.selected {
+  stroke-width: 3.3;
+}
+
+.thread-halo {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 8;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+
+.yard-wait {
+  fill: none;
+  stroke: var(--k);
+  stroke-width: 1.6;
+  stroke-dasharray: 0.5 3.5;
+  stroke-linecap: round;
+}
+
+.due {
+  fill: none;
+  stroke: var(--k);
+  stroke-width: 1.8;
+}
+
+.due-label,
+.knob-label {
+  font-family: var(--text);
+  font-style: italic;
+  font-size: 13px;
+  fill: var(--ink);
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.late-band,
+.conflict {
+  fill: url(#chart-hatch);
+  stroke: var(--alarm);
+  stroke-width: 1.3;
+}
+
+.survey .conflict {
+  fill: url(#survey-hatch);
+}
+
+.hatch-line {
+  stroke: var(--alarm);
+  stroke-width: 1.1;
+}
+
+.hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  pointer-events: stroke;
+  cursor: ew-resize;
+}
+
+.hit-knob {
+  fill: transparent;
+  cursor: ew-resize;
+}
+
+.knob {
+  fill: var(--paper);
+  stroke: var(--k);
+  stroke-width: 2.2;
+}
+
+.knob.active {
+  fill: var(--k);
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+
+.chart-surface:focus-visible .knob.active {
+  stroke: var(--focus);
+  stroke-width: 3;
+}
+
+.cursor {
+  stroke: var(--cursor);
+  stroke-width: 1.3;
+}
+
+.cursor-band {
+  stroke: var(--cursor-band);
+  stroke-width: 9;
+}
+
+.cursor-cap {
+  fill: var(--cursor);
+}
+
+/* ---------- controls and status ---------- */
+
+.controls {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.scrub {
+  flex: 1 1 220px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.scrub-label {
+  white-space: nowrap;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--ink-soft);
+}
+
+.scrub input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ink);
+  height: 32px;
+}
+
+.knob-bar {
+  gap: 8px 12px;
+  padding: 4px 0;
+  font-size: 17px;
+}
+
+.knob-bar .swatch {
+  width: 26px;
+  height: 4px;
+}
+
+.knob-bar-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.controls .stepper button {
+  min-height: 36px;
+  padding: 0;
+  box-shadow: none;
+  font-family: var(--text);
+  letter-spacing: 0;
+}
+
+.share label {
+  display: grid;
+  gap: 4px;
+  font-size: 15px;
+  font-style: italic;
+}
+
+.share-link {
+  width: 100%;
+  background: var(--paper-deep);
+  border: 1px solid var(--paper-edge);
+  padding: 6px 8px;
+  font-variant-numeric: lining-nums;
+  font-style: normal;
+}
+
+.stamp {
+  justify-self: start;
+  margin: 4px 0 0 6px;
+  padding: 10px 18px 12px;
+  border: 4px double var(--stamp);
+  color: var(--stamp);
+  transform: rotate(-2.5deg);
+  max-width: 100%;
+  animation: stamp-in 260ms ease-out;
+}
+
+.stamp p {
+  margin: 0;
+}
+
+.stamp-head {
+  font-family: var(--display);
+  font-size: 30px;
+  letter-spacing: 0.24em;
+  line-height: 1;
+}
+
+.stamp-body {
+  font-variant-numeric: lining-nums;
+  font-size: 16px;
+  margin-top: 6px !important;
+}
+
+.stamp-note {
+  font-style: italic;
+  font-size: 15px;
+}
+
+.next-plate {
+  display: inline-block;
+  margin-top: 6px;
+  font-family: var(--display);
+  letter-spacing: 0.06em;
+}
+
+@keyframes stamp-in {
+  from {
+    transform: rotate(-2.5deg) scale(1.25);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(-2.5deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.status {
+  margin-top: 16px;
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+
+.tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 28px;
+}
+
+.tally-item {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.tally-item dt {
+  font-family: var(--display);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+}
+
+.tally-item dd {
+  margin: 0;
+  font-size: 20px;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.headline {
+  margin: 6px 0 0;
+  font-size: 19px;
+}
+
+.headline.alarm {
+  color: var(--alarm);
+}
+
+.headline.clear {
+  color: var(--good);
+}
+
+.log {
+  margin: 4px 0 0;
+  padding-left: 1.1em;
+  font-size: 16px;
+  font-style: italic;
+  list-style: none;
+}
+
+.log li {
+  position: relative;
+}
+
+.log li::before {
+  content: "\00d7";
+  position: absolute;
+  left: -1em;
+  color: var(--alarm);
+  font-style: normal;
+}
+
+.survey-figure {
+  margin-top: 18px;
+  padding-top: 8px;
+  border-top: 1px solid var(--paper-edge);
+}
+
+/* ---------- the survey drawing ---------- */
+
+.survey-rail {
+  stroke: var(--ink);
+  stroke-width: 1.6;
+}
+
+.survey-ties {
+  stroke: var(--ink);
+  stroke-width: 0.8;
+}
+
+.survey-loop {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.2;
+}
+
+.survey-platform {
+  fill: var(--paper-deep);
+  stroke: var(--ink);
+  stroke-width: 0.8;
+}
+
+.survey-buffer {
+  stroke: var(--ink);
+  stroke-width: 2.6;
+}
+
+.survey-name {
+  font-family: var(--text);
+  font-style: italic;
+  font-size: 14px;
+  fill: var(--ink);
+}
+
+.survey-title {
+  font-family: var(--display);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  fill: var(--ink-soft);
+}
+
+.survey-time {
+  font-family: var(--text);
+  font-size: 15px;
+  fill: var(--ink);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.survey-caption {
+  font-family: var(--text);
+  font-style: italic;
+  font-size: 12px;
+  fill: var(--ink-soft);
+}
+
+.scale-dark {
+  fill: var(--ink);
+}
+
+.scale-light {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 0.6;
+}
+
+.survey-train {
+  fill: var(--k);
+  stroke: var(--paper);
+  stroke-width: 1;
+}
+
+/* ---------- side: trains and how-to ---------- */
+
+.side {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.side h3 {
+  margin: 0 0 6px;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 4px;
+}
+
+.train-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.train {
+  border-bottom: 1px solid var(--paper-edge);
+  padding: 8px 8px 10px;
+}
+
+.train.selected {
+  background: var(--paper-deep);
+  box-shadow: inset 3px 0 0 var(--k);
+}
+
+.train-pick {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+.swatch {
+  grid-row: span 2;
+  display: block;
+  height: 4px;
+  width: 30px;
+  background: var(--k);
+  border-radius: 2px;
+}
+
+.train.selected .swatch {
+  height: 6px;
+}
+
+.train-name {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.train-name kbd {
+  font-weight: 400;
+  font-size: 13px;
+  vertical-align: 2px;
+}
+
+.train-route {
+  font-size: 15px;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.train-facts,
+.arrival {
+  margin: 2px 0 0 42px;
+  font-size: 15px;
+  color: var(--ink-soft);
+  font-variant-numeric: lining-nums;
+}
+
+.arrival {
+  color: var(--good);
+}
+
+.arrival.is-late {
+  color: var(--alarm);
+}
+
+.knobs {
+  list-style: none;
+  margin: 8px 0 0 42px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.knob-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px;
+  font-size: 16px;
+}
+
+.knob-row.active {
+  outline: 1px dotted var(--ink-soft);
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepper button {
+  appearance: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stepper output {
+  min-width: 64px;
+  text-align: center;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.howto ul {
+  margin: 0;
+  padding-left: 1.1em;
+  font-size: 16px;
+}
+
+.howto li {
+  margin: 4px 0;
+}
+
+.howto strong {
+  font-weight: 600;
+}
+
+.colophon {
+  margin-top: 36px;
+  border-top: 4px double var(--rule);
+  padding-top: 10px;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.colophon p {
+  margin: 2px 0;
+}
+
+/* ---------- narrow screens ---------- */
+
+@media (max-width: 1179px) {
+  .desk {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  body {
+    font-size: 17px;
+  }
+
+  .page {
+    padding: 16px 16px 32px;
+  }
+
+  .masthead {
+    align-items: flex-start;
+  }
+
+  .theme-toggle {
+    font-size: 14px;
+    padding: 4px 10px;
+    min-height: 36px;
+  }
+
+  .sheet {
+    padding: 12px 10px 14px;
+    margin: 4px 3px;
+  }
+
+  .station-name {
+    font-size: 13px;
+  }
+
+  .side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .train-facts,
+  .arrival,
+  .knobs {
+    margin-left: 0;
+  }
+
+  .knob-row {
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp {
+    animation: none;
+  }
+
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+}
