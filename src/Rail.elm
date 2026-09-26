@@ -21,6 +21,7 @@ module Rail exposing
     , knobStation
     , knobValue
     , knobs
+    , legKm
     , lineLength
     , positionAt
     , pureRunTime
@@ -43,6 +44,12 @@ until the moment it reaches the next. Two trains may never be on the same
 section at once, so they can only meet or overtake at a station. A station
 holds as many trains at once as it has tracks: a halt has one, a passing
 loop two.
+
+The two kinds of place count minutes differently, on purpose. A section is
+free again the minute its train arrives at the next station (zero headway).
+A train standing at a station holds its track from its arrival minute to its
+departure minute, both included, so at a one-track halt a train cannot
+arrive in the minute another leaves: the swap takes at least a minute.
 
 -}
 
@@ -521,6 +528,8 @@ legConflict a b la lb =
         Nothing
 
 
+{-| Where a train is on its section at time t (clamped to the section).
+-}
 legKm : Leg -> Float -> Float
 legKm leg t =
     let
@@ -537,9 +546,10 @@ legKm leg t =
     toFloat leg.fromKm + f * toFloat (leg.toKm - leg.fromKm)
 
 
-{-| Where two trains on one section come together: the crossing of their
-lines if they cross during the overlap, otherwise the point where they are
-closest.
+{-| Where to mark two trains on one section: the crossing of their lines if
+they cross during the overlap. Otherwise one train simply followed the other
+into an occupied section (a rear-end that never catches up), and the mark
+goes on the follower's own thread, at the moment and place it entered.
 -}
 meetingPoint : Leg -> Leg -> Float -> Float -> ( Float, Float )
 meetingPoint la lb t0 t1 =
@@ -552,6 +562,13 @@ meetingPoint la lb t0 t1 =
 
         g1 =
             gap t1
+
+        follower =
+            if la.enter >= lb.enter then
+                la
+
+            else
+                lb
     in
     if g0 == 0 then
         ( t0, legKm la t0 )
@@ -563,11 +580,8 @@ meetingPoint la lb t0 t1 =
         in
         ( t, legKm la t )
 
-    else if abs g0 <= abs g1 then
-        ( t0, (legKm la t0 + legKm lb t0) / 2 )
-
     else
-        ( t1, (legKm la t1 + legKm lb t1) / 2 )
+        ( t0, legKm follower t0 )
 
 
 stationConflicts : Level -> List Run -> List Conflict

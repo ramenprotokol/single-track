@@ -180,6 +180,18 @@ suite =
 
                         [] ->
                             Expect.fail "expected a conflict"
+            , test "a rear-end where the threads never cross is marked on the follower's thread, where it entered" <|
+                \_ ->
+                    let
+                        level =
+                            line [ train "Express" 0 2 60, downLocal ]
+                    in
+                    -- Express: Ashby 0, Brill 6, Colley 12. Local: Ashby 1, Brill 10, Colley 19.
+                    -- The local never catches up, but it enters each section while the
+                    -- express is still on it: at Ashby at minute 1 and at Brill at 10.
+                    conflictsOf level (plan [ ( 0, [ 0 ] ), ( 1, [ 0 ] ) ])
+                        |> List.map (\c -> ( c.kind, c.time, c.km ))
+                        |> Expect.equal [ ( RearEnd, 1, 0 ), ( RearEnd, 10, 6 ) ]
             , test "a train that clears a section before another enters is fine" <|
                 \_ ->
                     conflictsOf (line [ downLocal, train "Short" 1 2 40 ]) (plan [ ( 0, [ 0 ] ), ( 30, [] ) ])

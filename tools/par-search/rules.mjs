@@ -1,5 +1,6 @@
 // Design-time mirror of the game's rules (src/Rail.elm is the source of truth;
-// the Elm tests check every known solution against it) plus the par search.
+// the Elm tests check every known solution against it, and MirrorTests checks
+// the two agree on many more timetables) plus the par search.
 //
 // The search fixes, for every pair of trains that share track, the order in
 // which they use it: where two opposing trains meet, or where one overtakes
@@ -7,7 +8,7 @@
 // that respects those orders, prunes on deadlines and on the best waiting found
 // so far, and handles a crowded loop by making one train leave before another
 // arrives (a bounded number of times). It is not exhaustive, so a par it finds
-// may be beatable.
+// may be beatable; prove.mjs checks par exhaustively for plates I to VIII.
 export const run = (level, train, g) => {
   const len = Math.abs(level.stations[g + 1].km - level.stations[g].km);
   return Math.ceil((len * 60) / train.speed);

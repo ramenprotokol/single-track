@@ -14,7 +14,9 @@ const put = (file, text) => outputs.push([file, text]);
 const q = (s) => JSON.stringify(s);
 const speedName = { 60: 'express', 40: 'local', 30: 'goods' };
 const stationFn = (s, i, n) => (i === 0 || i === n - 1 ? 'terminus' : s.tracks === 1 ? 'halt' : s.tracks === 2 ? 'loop' : 'yard');
-let elm = `module Levels exposing (all, count, get)
+// Plates whose par prove.mjs has checked exhaustively (see README).
+const PROVEN_THROUGH = 8;
+let elm = `module Levels exposing (all, count, get, parProven)
 
 {-| The hand-designed plates, from a first meeting to the grand chart.
 
@@ -41,6 +43,15 @@ count =
 get : Int -> Maybe Level
 get id =
     List.filter (\\l -> l.id == id) all |> List.head
+
+
+{-| Whether a plate's par is proven to be the least waiting possible:
+tools/par-search/prove.mjs tries every timetable with less waiting and none
+solves the plate. On the other plates par is the best the search found.
+-}
+parProven : Int -> Bool
+parProven id =
+    id <= ${PROVEN_THROUGH}
 
 
 

@@ -70,6 +70,19 @@ test('the plates in Elm match the design data the par search used', () => {
   execFileSync(process.execPath, [join(root, 'tools', 'par-search', 'emit.mjs'), '--check'], { stdio: 'pipe' });
 });
 
+test('the JavaScript mirror of the rules still gives the verdicts the Elm tests check', () => {
+  // Throws if tests/MirrorCases.elm no longer matches tools/par-search/rules.mjs.
+  execFileSync(process.execPath, [join(root, 'tools', 'par-search', 'mirror.mjs'), '--check'], { stdio: 'pipe' });
+});
+
+test('the par proof runs: no timetable beats par on plates I to IV', () => {
+  // The full proof (plates I to VIII, about 20 s) is `npm run prove`.
+  const out = execFileSync(process.execPath, [join(root, 'tools', 'par-search', 'prove.mjs'), '4'], { encoding: 'utf8' });
+  const lines = out.trim().split('\n');
+  assert.equal(lines.length, 4);
+  for (const line of lines) assert.match(line, /none solves: par is optimal/);
+});
+
 test('known solutions exist for every plate', () => {
   const sols = knownSolutionFragments();
   assert.ok(sols.length >= 12, `${sols.length} solutions`);

@@ -13,7 +13,8 @@
     "test": "npm run test:elm && npm run build && npm run test:e2e",
     "test:elm": "elm-test",
     "test:e2e": "node --test \"e2e/*.test.mjs\"",
-    "serve": "node scripts/serve.mjs"
+    "serve": "node scripts/serve.mjs",
+    "prove": "node tools/par-search/prove.mjs 8"
   },
   "devDependencies": {
     "elm": "0.19.1-6",

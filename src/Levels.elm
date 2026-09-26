@@ -1,4 +1,4 @@
-module Levels exposing (all, count, get)
+module Levels exposing (all, count, get, parProven)
 
 {-| The hand-designed plates, from a first meeting to the grand chart.
 
@@ -37,6 +37,15 @@ count =
 get : Int -> Maybe Level
 get id =
     List.filter (\l -> l.id == id) all |> List.head
+
+
+{-| Whether a plate's par is proven to be the least waiting possible:
+tools/par-search/prove.mjs tries every timetable with less waiting and none
+solves the plate. On the other plates par is the best the search found.
+-}
+parProven : Int -> Bool
+parProven id =
+    id <= 8
 
 
 
