@@ -3,16 +3,16 @@ module Game exposing
     , Snapshot
     , canRedo
     , canUndo
-    , fromLink
     , level
+    , load
     , moves
     , nudge
     , plan
     , preview
     , reset
     , set
+    , shared
     , start
-    , startWith
     , undo
     , redo
     )
@@ -26,15 +26,23 @@ waits). Nudging the same knob again straight away continues the same move,
 so dragging or arrow-keying a departure by twelve minutes is one move and
 one undo step.
 
+A timetable opened from a shared link is loaded as one more undo step, so it
+never wipes out work in progress. Until the player changes it, it is marked
+as shared: a solve of someone else's timetable is not the player's own.
+
 -}
 
 import History exposing (History)
 import Rail exposing (Knob, Level, Plan)
 
 
+{-| One state of the game. `shared` is true only for a timetable exactly as
+it arrived from a link; any move of the player's makes a new snapshot.
+-}
 type alias Snapshot =
     { plan : Plan
     , moves : Int
+    , shared : Bool
     }
 
 
@@ -43,7 +51,6 @@ type Game
         { level : Level
         , history : History Snapshot
         , lastKnob : Maybe ( Int, Knob )
-        , fromLink : Bool
         }
 
 
@@ -51,22 +58,26 @@ start : Level -> Game
 start lvl =
     Game
         { level = lvl
-        , history = History.init { plan = Rail.initialPlan lvl, moves = 0 }
+        , history = History.init { plan = Rail.initialPlan lvl, moves = 0, shared = False }
         , lastKnob = Nothing
-        , fromLink = False
         }
 
 
-{-| Open a level with a timetable that came from a shared link.
+{-| Load a timetable that came from a shared link (already validated against
+the level) as a new undo step. Undo brings back whatever was there before.
+Loading the timetable already on screen changes nothing.
 -}
-startWith : Level -> Plan -> Game
-startWith lvl p =
-    Game
-        { level = lvl
-        , history = History.init { plan = p, moves = 0 }
-        , lastKnob = Nothing
-        , fromLink = True
-        }
+load : Plan -> Game -> Game
+load p (Game g) =
+    if (History.present g.history).plan == p then
+        Game g
+
+    else
+        Game
+            { g
+                | history = History.push { plan = p, moves = 0, shared = True } g.history
+                , lastKnob = Nothing
+            }
 
 
 level : Game -> Level
@@ -84,9 +95,11 @@ moves (Game g) =
     (History.present g.history).moves
 
 
-fromLink : Game -> Bool
-fromLink (Game g) =
-    g.fromLink
+{-| Whether the timetable on screen is a shared one, untouched by the player.
+-}
+shared : Game -> Bool
+shared (Game g) =
+    (History.present g.history).shared
 
 
 canUndo : Game -> Bool
@@ -123,13 +136,13 @@ set train knob value (Game g) =
     else if g.lastKnob == Just ( train, knob ) then
         Game
             { g
-                | history = History.replace { current | plan = next } g.history
+                | history = History.replace { current | plan = next, shared = False } g.history
             }
 
     else
         Game
             { g
-                | history = History.push { plan = next, moves = current.moves + 1 } g.history
+                | history = History.push { plan = next, moves = current.moves + 1, shared = False } g.history
                 , lastKnob = Just ( train, knob )
             }
 
@@ -164,7 +177,7 @@ reset : Game -> Game
 reset (Game g) =
     let
         fresh =
-            { plan = Rail.initialPlan g.level, moves = 0 }
+            { plan = Rail.initialPlan g.level, moves = 0, shared = False }
     in
     if History.present g.history == fresh then
         Game g

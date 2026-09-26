@@ -1,16 +1,16 @@
 module Survey exposing (view)
 
-{-| The line as a surveyor would draw it: the railway symbol along its
-chainage, loops opening beside the running line, halts as single
-platforms, a scale of kilometres, and the trains where they stand at the
-chart's cursor.
+{-| The line as a surveyor would engrave it: a railway of two fine rails and
+sleepers along its chainage, loops opening beside the running line, halts
+as single platforms, a scale of kilometres, and the trains, as numbered ink
+blocks in their thread colours, where they stand at the chart's cursor.
 -}
 
 import Array
 import Clock
 import Html exposing (Html)
 import Html.Attributes as HA
-import Rail exposing (Conflict, Level, Place(..), Run)
+import Rail exposing (Conflict, Level, Run)
 import Svg exposing (Svg)
 import Svg.Attributes as SA
 
@@ -29,19 +29,31 @@ f1 v =
     String.fromFloat (toFloat (round (v * 10)) / 10)
 
 
+{-| The running line.
+-}
 mainY : Float
 mainY =
-    62
+    76
 
 
-loopY : Float
-loopY =
-    50
+{-| How far a loop or a yard road bows away from the running line.
+-}
+bow : Float
+bow =
+    26
+
+
+{-| Where a train standing on a loop road sits (three quarters of the bow,
+the peak of the curve).
+-}
+roadOffset : Float
+roadOffset =
+    bow * 0.75
 
 
 height : Float
 height =
-    132
+    170
 
 
 view : Config -> Html msg
@@ -55,10 +67,10 @@ view config =
 
         pad =
             if compact then
-                26
+                28
 
             else
-                40
+                44
 
         km0 =
             Array.get 0 level.stations |> Maybe.map (.km >> toFloat) |> Maybe.withDefault 0
@@ -78,10 +90,20 @@ view config =
         last =
             Array.length level.stations - 1
 
-        tieMarks =
-            List.range 0 (floor ((x1 - x0) / 7))
-                |> List.map (\i -> "M" ++ f1 (x0 + toFloat i * 7) ++ "," ++ f1 (mainY - 3.5) ++ " v7")
-                |> String.join " "
+        -- Two fine rails and a sleeper every five units.
+        rails =
+            [ Svg.line [ SA.x1 (f1 (x0 - 6)), SA.x2 (f1 (x1 + 6)), SA.y1 (f1 (mainY - 1.6)), SA.y2 (f1 (mainY - 1.6)), SA.class "survey-rail" ] []
+            , Svg.line [ SA.x1 (f1 (x0 - 6)), SA.x2 (f1 (x1 + 6)), SA.y1 (f1 (mainY + 1.6)), SA.y2 (f1 (mainY + 1.6)), SA.class "survey-rail" ] []
+            , Svg.path
+                [ SA.d
+                    (List.range 0 (floor ((x1 - x0 + 12) / 5))
+                        |> List.map (\i -> "M" ++ f1 (x0 - 6 + toFloat i * 5) ++ "," ++ f1 (mainY - 3.4) ++ " v6.8")
+                        |> String.join " "
+                    )
+                , SA.class "survey-ties"
+                ]
+                []
+            ]
 
         stationsList =
             Array.toIndexedList level.stations
@@ -103,28 +125,26 @@ view config =
             else
                 0
 
-        station ( index, s ) =
+        -- A loop road: a pair of rails bowing away from the running line.
+        road x dy =
             let
-                x =
-                    sx (toFloat s.km)
-
-                lens dy =
+                curve half depth =
                     Svg.path
                         [ SA.d
                             ("M"
-                                ++ f1 (x - 24)
+                                ++ f1 (x - half)
                                 ++ ","
                                 ++ f1 mainY
                                 ++ " C"
-                                ++ f1 (x - 14)
+                                ++ f1 (x - half * 0.55)
                                 ++ ","
-                                ++ f1 (mainY + dy)
+                                ++ f1 (mainY + depth)
                                 ++ " "
-                                ++ f1 (x + 14)
+                                ++ f1 (x + half * 0.55)
                                 ++ ","
-                                ++ f1 (mainY + dy)
+                                ++ f1 (mainY + depth)
                                 ++ " "
-                                ++ f1 (x + 24)
+                                ++ f1 (x + half)
                                 ++ ","
                                 ++ f1 mainY
                             )
@@ -132,8 +152,22 @@ view config =
                         ]
                         []
 
+                sign =
+                    if dy < 0 then
+                        -1
+
+                    else
+                        1
+            in
+            [ curve 26 (dy - sign * 2.4), curve 23 (dy + sign * 1.6) ]
+
+        station ( index, s ) =
+            let
+                x =
+                    sx (toFloat s.km)
+
                 platform =
-                    Svg.rect [ SA.x (f1 (x - 9)), SA.y (f1 (mainY + 6)), SA.width "18", SA.height "4", SA.class "survey-platform" ] []
+                    Svg.rect [ SA.x (f1 (x - 11)), SA.y (f1 (mainY + 6)), SA.width "22", SA.height "4", SA.class "survey-platform" ] []
 
                 track =
                     if index == 0 || index == last then
@@ -144,9 +178,31 @@ view config =
 
                                 else
                                     1
+
+                            siding lift =
+                                Svg.path
+                                    [ SA.d
+                                        ("M"
+                                            ++ f1 (x - dir * 28)
+                                            ++ ","
+                                            ++ f1 mainY
+                                            ++ " Q"
+                                            ++ f1 (x - dir * 10)
+                                            ++ ","
+                                            ++ f1 (mainY - lift)
+                                            ++ " "
+                                            ++ f1 (x + dir * 4)
+                                            ++ ","
+                                            ++ f1 (mainY - lift)
+                                        )
+                                    , SA.class "survey-loop"
+                                    ]
+                                    []
                         in
-                        [ Svg.line [ SA.x1 (f1 (x + dir * 4)), SA.x2 (f1 (x + dir * 4)), SA.y1 (f1 (mainY - 6)), SA.y2 (f1 (mainY + 6)), SA.class "survey-buffer" ] []
-                        , Svg.path [ SA.d ("M" ++ f1 (x - dir * 26) ++ "," ++ f1 mainY ++ " Q" ++ f1 (x - dir * 10) ++ "," ++ f1 (mainY - 11) ++ " " ++ f1 (x + dir * 2) ++ "," ++ f1 (mainY - 11)), SA.class "survey-loop" ] []
+                        [ siding 11
+                        , siding 14
+                        , Svg.line [ SA.x1 (f1 (x + dir * 6)), SA.x2 (f1 (x + dir * 6)), SA.y1 (f1 (mainY - 5)), SA.y2 (f1 (mainY + 5)), SA.class "survey-buffer" ] []
+                        , Svg.line [ SA.x1 (f1 (x + dir * 6)), SA.x2 (f1 (x + dir * 6)), SA.y1 (f1 (mainY - 17)), SA.y2 (f1 (mainY - 10)), SA.class "survey-buffer" ] []
                         , platform
                         ]
 
@@ -154,17 +210,17 @@ view config =
                         [ platform ]
 
                     else if s.tracks == 2 then
-                        [ lens -24, platform ]
+                        road x -bow ++ [ platform ]
 
                     else
-                        [ lens -24, lens 24 ]
+                        road x -bow ++ road x bow
 
                 labelY =
                     if labelRow index == 1 then
-                        104
+                        mainY + 56
 
                     else
-                        90
+                        mainY + 42
             in
             track
                 ++ [ Svg.text_ [ SA.x (f1 x), SA.y (f1 labelY), SA.class "survey-name", SA.textAnchor "middle" ] [ Svg.text s.name ] ]
@@ -186,19 +242,16 @@ view config =
 
         trainMark (( r, p ) as item) =
             let
-                slot =
-                    slotOf item
-
                 yv =
-                    case slot of
+                    case slotOf item of
                         0 ->
                             mainY
 
                         1 ->
-                            loopY - 4
+                            mainY - roadOffset
 
                         _ ->
-                            mainY + 14
+                            mainY + roadOffset
 
                 x =
                     sx p.km
@@ -209,21 +262,25 @@ view config =
                 nose =
                     case r.direction of
                         Rail.Down ->
-                            "M" ++ f1 (x + 7) ++ "," ++ f1 (yv - 4) ++ " l5,4 l-5,4 z"
+                            "M" ++ f1 (x + 13) ++ "," ++ f1 (yv - 6.5) ++ " l6.5,6.5 l-6.5,6.5 z"
 
                         Rail.Up ->
-                            "M" ++ f1 (x - 7) ++ "," ++ f1 (yv - 4) ++ " l-5,4 l5,4 z"
+                            "M" ++ f1 (x - 13) ++ "," ++ f1 (yv - 6.5) ++ " l-6.5,6.5 l6.5,6.5 z"
             in
             Svg.g [ SA.class ("survey-train ink-" ++ String.fromInt inkIndex) ]
-                [ Svg.rect [ SA.x (f1 (x - 7)), SA.y (f1 (yv - 4)), SA.width "14", SA.height "8", SA.rx "1.5" ] []
-                , Svg.path [ SA.d nose ] []
+                [ Svg.path [ SA.d nose, SA.class "survey-train-body" ] []
+                , Svg.rect [ SA.x (f1 (x - 13)), SA.y (f1 (yv - 6.5)), SA.width "26", SA.height "13", SA.rx "1", SA.class "survey-train-body" ] []
+                , Svg.text_ [ SA.x (f1 x), SA.y (f1 (yv + 4)), SA.class "survey-train-no", SA.textAnchor "middle" ] [ Svg.text (String.fromInt (r.train + 1)) ]
                 ]
 
         live =
             List.filter (\c -> toFloat c.from <= config.cursor && config.cursor <= toFloat c.until) config.conflicts
 
         conflictMark c =
-            Svg.circle [ SA.cx (f1 (sx c.km)), SA.cy (f1 mainY), SA.r "11", SA.class "conflict" ] []
+            Svg.circle [ SA.cx (f1 (sx c.km)), SA.cy (f1 mainY), SA.r "13", SA.class "conflict" ] []
+
+        scaleY =
+            height - 26
 
         scale =
             let
@@ -236,9 +293,9 @@ view config =
                             (\i ->
                                 Svg.rect
                                     [ SA.x (f1 (x0 + toFloat i * unit))
-                                    , SA.y "116"
+                                    , SA.y (f1 scaleY)
                                     , SA.width (f1 unit)
-                                    , SA.height "4"
+                                    , SA.height "3.5"
                                     , SA.class
                                         (if modBy 2 i == 0 then
                                             "scale-dark"
@@ -249,14 +306,29 @@ view config =
                                     ]
                                     []
                             )
+
+                tick i =
+                    Svg.line
+                        [ SA.x1 (f1 (x0 + toFloat i * unit))
+                        , SA.x2 (f1 (x0 + toFloat i * unit))
+                        , SA.y1 (f1 (scaleY - 3))
+                        , SA.y2 (f1 scaleY)
+                        , SA.class "scale-tick"
+                        ]
+                        []
             in
             blocks
-                ++ [ Svg.text_ [ SA.x (f1 x0), SA.y "129", SA.class "survey-caption" ] [ Svg.text "0" ]
-                   , Svg.text_ [ SA.x (f1 (x0 + 5 * unit)), SA.y "129", SA.class "survey-caption", SA.textAnchor "middle" ] [ Svg.text "5 km" ]
+                ++ List.map tick [ 0, 5 ]
+                ++ [ Svg.text_ [ SA.x (f1 x0), SA.y (f1 (scaleY + 15)), SA.class "survey-caption", SA.textAnchor "middle" ] [ Svg.text "0" ]
+                   , Svg.text_ [ SA.x (f1 (x0 + 5 * unit)), SA.y (f1 (scaleY + 15)), SA.class "survey-caption", SA.textAnchor "middle" ] [ Svg.text "5 km" ]
                    ]
 
         time =
             Clock.time level.clock (round config.cursor)
+
+        -- A neat line round the drawing, as on an engraved plate.
+        neat =
+            Svg.rect [ SA.x "0.5", SA.y "0.5", SA.width (f1 (config.width - 1)), SA.height (f1 (height - 1)), SA.class "survey-neat" ] []
 
         summary =
             "Survey drawing of the line at "
@@ -280,11 +352,11 @@ view config =
                 [ SA.id "survey-hatch", SA.width "5", SA.height "5", SA.patternUnits "userSpaceOnUse" ]
                 [ Svg.path [ SA.d "M0,0 L5,5 M5,0 L0,5", SA.class "hatch-line" ] [] ]
             ]
-         , Svg.text_ [ SA.x (f1 x0), SA.y "18", SA.class "survey-title" ] [ Svg.text "Section of the line" ]
-         , Svg.text_ [ SA.x (f1 x1), SA.y "18", SA.class "survey-time", SA.textAnchor "end" ] [ Svg.text time ]
-         , Svg.line [ SA.x1 (f1 x0), SA.x2 (f1 x1), SA.y1 (f1 mainY), SA.y2 (f1 mainY), SA.class "survey-rail" ] []
-         , Svg.path [ SA.d tieMarks, SA.class "survey-ties" ] []
+         , neat
+         , Svg.text_ [ SA.x (f1 x0), SA.y "24", SA.class "survey-title" ] [ Svg.text "Section of the line" ]
+         , Svg.text_ [ SA.x (f1 x1), SA.y "26", SA.class "survey-time", SA.textAnchor "end" ] [ Svg.text time ]
          ]
+            ++ rails
             ++ List.concatMap station stationsList
             ++ List.map conflictMark live
             ++ List.map trainMark placed

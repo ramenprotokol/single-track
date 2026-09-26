@@ -41,8 +41,11 @@ type alias Geometry =
     }
 
 
-geometry : Level -> Float -> Geometry
-geometry level width =
+{-| The chart's layout for a given width, with the plot no taller than
+`maxPlot` (though never squashed below a legible minimum).
+-}
+geometry : Level -> Float -> Float -> Geometry
+geometry level width maxPlot =
     let
         compact =
             width < 560
@@ -60,16 +63,15 @@ geometry level width =
             else
                 14
 
-        plotH =
-            clamp
-                (if compact then
-                    170
+        minPlot =
+            if compact then
+                170
 
-                 else
-                    230
-                )
-                400
-                (kmLen * perKm)
+            else
+                230
+
+        plotH =
+            clamp minPlot (clamp minPlot 400 maxPlot) (kmLen * perKm)
 
         -- Room above the plot for the time labels, and below them for knob labels.
         top =
@@ -191,7 +193,7 @@ view config =
             :: grid g
             ++ stations config.level g
             ++ List.concatMap (trainInk config) config.report.runs
-            ++ List.map (conflictMark g) config.report.conflicts
+            ++ List.concatMap (conflictMark g config.report.runs) config.report.conflicts
             ++ List.map (hitLine g) config.report.runs
             ++ selectedKnobs config
             ++ cursorLine g config.cursor
@@ -494,6 +496,11 @@ trainInk config run =
                         ]
                         []
 
+                -- A faint bleed of the same ink under the line, as an engraved
+                -- and hand-coloured thread would have.
+                edge =
+                    Svg.polyline [ SA.points (points g run), SA.class ("thread-edge " ++ inkClass train), SA.clipPath "url(#plot-clip)" ] []
+
                 halo =
                     if selected then
                         [ Svg.polyline [ SA.points (points g run), SA.class "thread-halo", SA.clipPath "url(#plot-clip)" ] [] ]
@@ -501,7 +508,7 @@ trainInk config run =
                     else
                         []
             in
-            yardWait ++ due ++ late ++ halo ++ [ thread ] ++ dueLabel
+            yardWait ++ due ++ late ++ halo ++ [ edge, thread ] ++ dueLabel
 
 
 hitLine : Geometry -> Run -> Svg msg
@@ -653,8 +660,14 @@ knobLabel config train ( knob, t, km ) =
 -- CONFLICTS AND THE CURSOR
 
 
-conflictMark : Geometry -> Conflict -> Svg msg
-conflictMark g c =
+{-| A conflict on the chart. Two trains on one section get a hatched circle
+where their threads cross; when they never cross (one follows the other into
+an occupied section), the circle sits on the follower's thread where it
+entered, and a hatched sliver fills the gap between the two threads for as
+long as they share the section.
+-}
+conflictMark : Geometry -> List Run -> Conflict -> List (Svg msg)
+conflictMark g runs c =
     case c.place of
         AtStation _ ->
             let
@@ -670,7 +683,7 @@ conflictMark g c =
                 cx =
                     (x0 + x1) / 2
             in
-            Svg.rect
+            [ Svg.rect
                 [ SA.x (f1 (cx - w / 2))
                 , SA.y (f1 (py g c.km - 6))
                 , SA.width (f1 w)
@@ -678,15 +691,57 @@ conflictMark g c =
                 , SA.class "conflict"
                 ]
                 []
+            ]
 
-        Section _ ->
-            Svg.circle
-                [ SA.cx (f1 (px g c.time))
-                , SA.cy (f1 (py g c.km))
-                , SA.r "9"
-                , SA.class "conflict"
-                ]
-                []
+        Section segment ->
+            let
+                legOf index =
+                    List.drop index runs
+                        |> List.head
+                        |> Maybe.map .legs
+                        |> Maybe.withDefault []
+                        |> List.filter (\l -> l.segment == segment && l.enter < c.until && c.from < l.exit)
+                        |> List.head
+
+                sliver =
+                    case ( c.kind, List.map legOf c.trains ) of
+                        ( RearEnd, [ Just la, Just lb ] ) ->
+                            let
+                                t0 =
+                                    toFloat c.from
+
+                                t1 =
+                                    toFloat c.until
+
+                                at leg t =
+                                    f1 (px g t) ++ "," ++ f1 (py g (Rail.legKm leg t))
+                            in
+                            [ Svg.polygon
+                                [ SA.points (String.join " " [ at la t0, at la t1, at lb t1, at lb t0 ])
+                                , SA.class "conflict conflict-sliver"
+                                , SA.clipPath "url(#plot-clip)"
+                                ]
+                                []
+                            ]
+
+                        _ ->
+                            []
+            in
+            sliver
+                ++ [ Svg.circle
+                        [ SA.cx (f1 (px g c.time))
+                        , SA.cy (f1 (py g c.km))
+                        , SA.r
+                            (if List.isEmpty sliver then
+                                "9"
+
+                             else
+                                "7"
+                            )
+                        , SA.class "conflict"
+                        ]
+                        []
+                   ]
 
 
 cursorLine : Geometry -> Maybe Float -> List (Svg msg)

@@ -7,6 +7,7 @@ browser.
 
 import Array
 import Browser
+import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Nav
 import Chart
@@ -23,6 +24,7 @@ import Levels
 import Rail exposing (Conflict, Kind(..), Knob(..), Level, Place(..), Plan, Report)
 import Share
 import Survey
+import Task
 import Time
 import Url exposing (Url)
 
@@ -44,6 +46,16 @@ port copied : (Bool -> msg) -> Sub msg
 
 
 port motion : (Bool -> msg) -> Sub msg
+
+
+{-| The system colour scheme changed (true when it is now dark).
+-}
+port scheme : (Bool -> msg) -> Sub msg
+
+
+{-| Bring an element fully into view, instantly under reduced motion.
+-}
+port reveal : String -> Cmd msg
 
 
 
@@ -89,6 +101,7 @@ type alias Model =
     , cursor : Float
     , notice : Maybe String
     , width : Int
+    , height : Int
     , reducedMotion : Bool
     , prefersDark : Bool
     , theme : Theme
@@ -97,6 +110,8 @@ type alias Model =
     , copyState : Maybe Bool
     , verdict : Maybe Verdict
     , home : String
+    , base : String
+    , plateFocus : Int
     }
 
 
@@ -106,12 +121,13 @@ type alias Verdict =
     { solved : Bool
     , waiting : Int
     , moves : Int
-    , fromLink : Bool
+    , shared : Bool
     }
 
 
 type alias Flags =
     { width : Int
+    , height : Int
     , reducedMotion : Bool
     , prefersDark : Bool
     , saved : String
@@ -120,8 +136,9 @@ type alias Flags =
 
 flagsDecoder : Decoder Flags
 flagsDecoder =
-    Decode.map4 Flags
+    Decode.map5 Flags
         (Decode.oneOf [ Decode.field "width" Decode.int, Decode.succeed 1024 ])
+        (Decode.oneOf [ Decode.field "height" Decode.int, Decode.succeed 800 ])
         (Decode.oneOf [ Decode.field "reducedMotion" Decode.bool, Decode.succeed False ])
         (Decode.oneOf [ Decode.field "prefersDark" Decode.bool, Decode.succeed False ])
         (Decode.oneOf [ Decode.field "saved" Decode.string, Decode.succeed "" ])
@@ -204,7 +221,7 @@ init rawFlags url key =
     let
         flags =
             Decode.decodeValue flagsDecoder rawFlags
-                |> Result.withDefault { width = 1024, reducedMotion = False, prefersDark = False, saved = "" }
+                |> Result.withDefault { width = 1024, height = 800, reducedMotion = False, prefersDark = False, saved = "" }
 
         saved =
             Decode.decodeString savedDecoder flags.saved
@@ -228,6 +245,7 @@ init rawFlags url key =
             , cursor = 0
             , notice = Nothing
             , width = flags.width
+            , height = flags.height
             , reducedMotion = flags.reducedMotion
             , prefersDark = flags.prefersDark
             , theme = saved.theme
@@ -236,10 +254,15 @@ init rawFlags url key =
             , copyState = Nothing
             , verdict = Nothing
             , home = url.path
+            , base = Url.toString { url | fragment = Nothing, query = Nothing }
+            , plateFocus = firstUnsolved
             }
                 |> openPlate firstUnsolved
+
+        ( routed, cmd ) =
+            route url model
     in
-    ( route url model, setTheme (themeName saved.theme) )
+    ( routed, Cmd.batch [ setTheme (themeName saved.theme), cmd ] )
 
 
 
@@ -298,27 +321,32 @@ openPlate id model =
                 , share = Nothing
                 , copyState = Nothing
                 , verdict = Nothing
+                , plateFocus = id
             }
 
 
-route : Url -> Model -> Model
+{-| Follow the address. A timetable in the address is used once: it is
+loaded as an undo step and the address is then cut back to the bare plate,
+so Back and Forward only ever switch plates and never replace work.
+-}
+route : Url -> Model -> ( Model, Cmd Msg )
 route url model =
     case url.fragment of
         Nothing ->
-            model
+            ( model, Cmd.none )
 
         Just "" ->
-            model
+            ( model, Cmd.none )
 
         Just fragment ->
             case Share.parse fragment of
                 Err message ->
-                    { model | notice = Just (message ++ " Showing plate " ++ String.fromInt model.plate ++ " instead.") }
+                    ( { model | notice = Just (message ++ " Showing plate " ++ String.fromInt model.plate ++ " instead.") }, Cmd.none )
 
                 Ok link ->
                     case Levels.get link.plate of
                         Nothing ->
-                            { model | notice = Just ("There is no plate " ++ String.fromInt link.plate ++ ". Showing plate " ++ String.fromInt model.plate ++ " instead.") }
+                            ( { model | notice = Just ("There is no plate " ++ String.fromInt link.plate ++ ". Showing plate " ++ String.fromInt model.plate ++ " instead.") }, Cmd.none )
 
                         Just lvl ->
                             let
@@ -328,28 +356,49 @@ route url model =
 
                                     else
                                         openPlate link.plate { model | notice = Nothing }
+
+                                bare =
+                                    Nav.replaceUrl model.key ("#p" ++ String.fromInt lvl.id)
                             in
                             case link.times of
                                 Nothing ->
-                                    switched
+                                    ( switched, Cmd.none )
 
                                 Just times ->
                                     case Share.toPlan lvl times of
                                         Err message ->
-                                            { switched | notice = Just (message ++ " Showing the plate as it was.") }
+                                            ( { switched | notice = Just (message ++ " Showing the plate as it was.") }, bare )
 
                                         Ok plan ->
-                                            if plan == Game.plan (game switched) then
-                                                switched
+                                            let
+                                                before =
+                                                    game switched
+                                            in
+                                            if plan == Game.plan before then
+                                                ( switched, bare )
 
                                             else
-                                                { switched
-                                                    | games = Dict.insert lvl.id (Game.startWith lvl plan) switched.games
-                                                    , notice = Just ("Opened a shared timetable for plate " ++ Clock.roman lvl.id ++ ". Press Run to see it work, or change it.")
+                                                ( { switched
+                                                    | games = Dict.insert lvl.id (Game.load plan before) switched.games
+                                                    , notice =
+                                                        Just
+                                                            ("Opened a shared timetable for plate "
+                                                                ++ Clock.roman lvl.id
+                                                                ++ (if Game.plan before == Rail.initialPlan lvl then
+                                                                        ". Press Run to see it work, or change it."
+
+                                                                    else
+                                                                        ". Undo brings back the timetable you had."
+                                                                   )
+                                                            )
                                                     , playback = Idle
                                                     , cursor = 0
                                                     , verdict = Nothing
-                                                }
+                                                    , share = Nothing
+                                                    , copyState = Nothing
+                                                  }
+                                                , bare
+                                                )
 
 
 updateGame : (Game -> Game) -> Model -> Model
@@ -399,6 +448,28 @@ chartWidth viewport =
         toFloat (clamp 320 900 (viewport - 40))
 
 
+{-| The chart's geometry for this window. The plot is capped by the window's
+height so that, once Run brings the chart to the top of the window, the run
+controls, the chart and the survey drawing under it are all in view.
+-}
+chartGeometry : Model -> Level -> Chart.Geometry
+chartGeometry model lvl =
+    let
+        width =
+            chartWidth model.width
+
+        -- Everything on the stage that is not the plot: the run bar, the
+        -- chart's margins and caption, the survey drawing and its key.
+        reserve =
+            if width < 560 then
+                430
+
+            else
+                400
+    in
+    Chart.geometry lvl width (toFloat (model.height - reserve))
+
+
 
 -- UPDATE
 
@@ -423,8 +494,10 @@ type Msg
     | Scrub Float
     | ShareLink
     | Copied Bool
-    | Resized Int
+    | Resized Int Int
     | MotionChanged Bool
+    | SchemeChanged Bool
+    | PlateKey String
     | ToggleTheme
     | DismissNotice
     | NoOp
@@ -434,9 +507,12 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         UrlRequested (Browser.Internal url) ->
-            -- Plate links change the fragment; anything else (the notices
-            -- file) is a real page load.
-            if url.path == model.home && url.fragment /= Nothing then
+            -- The skip link moves focus to the chart; plate links change the
+            -- fragment; anything else (the notices file) is a real page load.
+            if url.path == model.home && url.fragment == Just chartId then
+                ( model, focus chartId )
+
+            else if url.path == model.home && url.fragment /= Nothing then
                 ( model, Nav.pushUrl model.key (Url.toString url) )
 
             else
@@ -446,7 +522,7 @@ update msg model =
             ( model, Nav.load href )
 
         UrlChanged url ->
-            ( route url model, Cmd.none )
+            route url model
 
         Select i ->
             ( { model | selected = clamp 0 (trainCount model - 1) i, knob = Departure }, Cmd.none )
@@ -463,7 +539,7 @@ update msg model =
                     level model
 
                 g =
-                    Chart.geometry lvl (chartWidth model.width)
+                    chartGeometry model lvl
 
                 current =
                     List.drop grab.train (Game.plan (game model))
@@ -559,7 +635,7 @@ update msg model =
                                 model.cursor
                         , verdict = Nothing
                       }
-                    , Cmd.none
+                    , reveal stageId
                     )
 
         Frame delta ->
@@ -604,22 +680,58 @@ update msg model =
             ( { model | cursor = clamp 0 (toFloat (level model).span) t, playback = Idle }, Cmd.none )
 
         ShareLink ->
+            -- The link is copied and shown, but the address is left alone:
+            -- a timetable sitting in the address could come back through Back
+            -- and replace later work.
             let
                 fragment =
                     Share.encode model.plate (Game.plan (game model))
             in
             ( { model | share = Just fragment, copyState = Nothing }
-            , Cmd.batch [ Nav.replaceUrl model.key ("#" ++ fragment), copyLink fragment ]
+            , copyLink fragment
             )
 
         Copied ok ->
             ( { model | copyState = Just ok }, Cmd.none )
 
-        Resized w ->
-            ( { model | width = w }, Cmd.none )
+        Resized w h ->
+            ( { model | width = w, height = h }, Cmd.none )
 
         MotionChanged reduced ->
             ( { model | reducedMotion = reduced }, Cmd.none )
+
+        SchemeChanged dark ->
+            ( { model | prefersDark = dark }, Cmd.none )
+
+        PlateKey key ->
+            -- The plates are one tab stop; arrows, Home and End move along
+            -- them. The model, not the event target, knows where focus is
+            -- headed, so quick repeated presses are not lost while it moves.
+            let
+                from =
+                    model.plateFocus
+
+                target =
+                    case key of
+                        "Home" ->
+                            1
+
+                        "End" ->
+                            Levels.count
+
+                        "ArrowLeft" ->
+                            from - 1
+
+                        "ArrowUp" ->
+                            from - 1
+
+                        _ ->
+                            from + 1
+
+                next =
+                    clamp 1 Levels.count target
+            in
+            ( { model | plateFocus = next }, focus (plateLinkId next) )
 
         ToggleTheme ->
             let
@@ -640,6 +752,26 @@ update msg model =
 
         NoOp ->
             ( model, Cmd.none )
+
+
+chartId : String
+chartId =
+    "chart"
+
+
+stageId : String
+stageId =
+    "stage"
+
+
+plateLinkId : Int -> String
+plateLinkId n =
+    "plate-" ++ String.fromInt n
+
+
+focus : String -> Cmd Msg
+focus id =
+    Task.attempt (\_ -> NoOp) (Browser.Dom.focus id)
 
 
 isDark : Model -> Bool
@@ -671,7 +803,7 @@ finish end model =
             { solved = report.solved
             , waiting = report.waiting
             , moves = Game.moves g
-            , fromLink = Game.fromLink g
+            , shared = Game.shared g
             }
 
         better old =
@@ -682,8 +814,9 @@ finish end model =
                 Just r ->
                     report.waiting < r.waiting || (report.waiting == r.waiting && verdict.moves < r.moves)
 
+        -- Someone else's timetable, run untouched, is not the player's solve.
         records =
-            if report.solved && better (Dict.get lvl.id model.records) then
+            if report.solved && not verdict.shared && better (Dict.get lvl.id model.records) then
                 Dict.insert lvl.id { waiting = report.waiting, moves = verdict.moves } model.records
 
             else
@@ -765,9 +898,10 @@ chartKey key shift model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Browser.Events.onResize (\w _ -> Resized w)
+        [ Browser.Events.onResize Resized
         , copied Copied
         , motion MotionChanged
+        , scheme SchemeChanged
         , Browser.Events.onKeyDown globalKeys
         , case model.playback of
             Playing ->
@@ -829,16 +963,23 @@ view model =
     { title = "Single Track: plate " ++ Clock.roman lvl.id ++ ", " ++ lvl.title
     , body =
         [ div [ HA.class "page" ]
-            [ masthead model
+            [ a [ HA.class "skip-link", HA.href ("#" ++ chartId) ] [ text "Skip to the chart" ]
+            , masthead model
             , plateNav model
             , noticeView model
             , main_ [ HA.class "desk" ]
                 [ section [ HA.class "sheet", HA.attribute "aria-labelledby" "plate-title" ]
                     [ plateHead lvl model
-                    , chartFigure model lvl report
-                    , controls model lvl report
+
+                    -- The stage: run controls, the chart and the survey drawing
+                    -- together, so a run can be watched on both at once.
+                    , div [ HA.class "stage", HA.id stageId ]
+                        [ runBar model lvl
+                        , chartFigure model lvl report
+                        , surveyFigure model lvl report
+                        ]
+                    , controls model lvl
                     , statusView model lvl report
-                    , surveyFigure model lvl report
                     ]
                 , aside [ HA.class "side" ]
                     [ trainsPanel model lvl plan report
@@ -884,8 +1025,9 @@ masthead model =
 
 plateNav : Model -> Html Msg
 plateNav model =
-    nav [ HA.class "plates", HA.attribute "aria-label" "Plates" ]
-        [ ol []
+    nav [ HA.class "plates", HA.attribute "aria-label" "Plates", HA.attribute "aria-describedby" "plates-hint" ]
+        [ span [ HA.class "visually-hidden", HA.id "plates-hint" ] [ text "Arrow keys move between the plates." ]
+        , ol [ HE.preventDefaultOn "keydown" plateKeyDecoder ]
             (List.map
                 (\l ->
                     let
@@ -898,6 +1040,15 @@ plateNav model =
                     li []
                         [ a
                             ([ HA.href ("#p" ++ String.fromInt l.id)
+                             , HA.id (plateLinkId l.id)
+                             , HA.attribute "data-plate" (String.fromInt l.id)
+                             , HA.tabindex
+                                (if l.id == model.plateFocus then
+                                    0
+
+                                 else
+                                    -1
+                                )
                              , HA.classList [ ( "plate-link", True ), ( "solved", solved ), ( "current", current ) ]
                              , HA.attribute "aria-label"
                                 ("Plate "
@@ -926,6 +1077,21 @@ plateNav model =
                 Levels.all
             )
         ]
+
+
+plateKeyDecoder : Decoder ( Msg, Bool )
+plateKeyDecoder =
+    Decode.map2 Tuple.pair
+        (Decode.field "key" Decode.string)
+        (Decode.at [ "target", "dataset", "plate" ] Decode.string)
+        |> Decode.andThen
+            (\( key, _ ) ->
+                if List.member key [ "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End" ] then
+                    Decode.succeed ( PlateKey key, True )
+
+                else
+                    Decode.fail "not ours"
+            )
 
 
 noticeView : Model -> Html Msg
@@ -966,7 +1132,7 @@ chartFigure : Model -> Level -> Report -> Html Msg
 chartFigure model lvl report =
     let
         g =
-            Chart.geometry lvl (chartWidth model.width)
+            chartGeometry model lvl
 
         cursor =
             if model.playback == Idle && model.cursor == 0 then
@@ -992,6 +1158,7 @@ chartFigure model lvl report =
     figure [ HA.class "chart-figure" ]
         [ div
             ([ HA.class "chart-surface"
+             , HA.id chartId
              , HA.classList [ ( "dragging", dragging ) ]
              , HA.attribute "data-capture" ""
              , HA.tabindex 0
@@ -1013,6 +1180,7 @@ chartFigure model lvl report =
                 , description = chartDescription lvl report
                 }
             ]
+        , verdictView model lvl report
         , figcaption [ HA.class "chart-caption" ]
             [ text "Graphic timetable. Time runs left to right; the line runs top to bottom, stations spaced by distance. Each thread is a train." ]
         ]
@@ -1075,12 +1243,11 @@ chartDescription lvl report =
         ++ " conflicts."
 
 
-controls : Model -> Level -> Report -> Html Msg
-controls model lvl report =
+{-| Run, pause and the chart-time scrubber, just above the chart.
+-}
+runBar : Model -> Level -> Html Msg
+runBar model lvl =
     let
-        g =
-            game model
-
         playLabel =
             case model.playback of
                 Playing ->
@@ -1096,7 +1263,7 @@ controls model lvl report =
                     else
                         "Run"
     in
-    div [ HA.class "controls" ]
+    div [ HA.class "controls run-bar" ]
         [ div [ HA.class "control-row" ]
             [ button [ HA.type_ "button", HA.class "primary", HE.onClick TogglePlay ] [ text playLabel ]
             , label [ HA.class "scrub" ]
@@ -1112,7 +1279,19 @@ controls model lvl report =
                     []
                 ]
             ]
-        , knobBar model lvl
+        ]
+
+
+{-| Editing: the selected knob's stepper, undo, redo, reset and share.
+-}
+controls : Model -> Level -> Html Msg
+controls model lvl =
+    let
+        g =
+            game model
+    in
+    div [ HA.class "controls" ]
+        [ knobBar model lvl
         , div [ HA.class "control-row" ]
             [ button [ HA.type_ "button", HE.onClick Undo, HA.disabled (not (Game.canUndo g)), HA.title "Undo (Ctrl+Z)" ] [ text "Undo" ]
             , button [ HA.type_ "button", HE.onClick Redo, HA.disabled (not (Game.canRedo g)), HA.title "Redo (Ctrl+Shift+Z)" ] [ text "Redo" ]
@@ -1120,12 +1299,11 @@ controls model lvl report =
             , button [ HA.type_ "button", HE.onClick ShareLink ] [ text "Share timetable" ]
             ]
         , shareView model
-        , verdictView model lvl report
         ]
 
 
-{-| The selected knob, adjustable right under the chart (handy on phones,
-where the train cards are further down).
+{-| The selected knob, adjustable just below the chart and the survey
+drawing (handy on phones, where the train cards are further down).
 -}
 knobBar : Model -> Level -> Html Msg
 knobBar model lvl =
@@ -1185,11 +1363,13 @@ shareView model =
                                     "Link to your timetable:"
                             )
                         ]
-                    , input [ HA.readonly True, HA.value ("#" ++ fragment), HA.class "share-link", HA.attribute "aria-label" "Share link fragment" ] []
+                    , input [ HA.readonly True, HA.value (model.base ++ "#" ++ fragment), HA.class "share-link", HA.attribute "aria-label" "Share link" ] []
                     ]
                 ]
 
 
+{-| The inspection stamp, pressed onto the chart when a run finishes.
+-}
 verdictView : Model -> Level -> Report -> Html Msg
 verdictView model lvl report =
     case ( model.playback, model.verdict ) of
@@ -1202,7 +1382,7 @@ verdictView model lvl report =
                             (Clock.duration v.waiting
                                 ++ " waiting · par "
                                 ++ Clock.duration lvl.par
-                                ++ (if v.fromLink && v.moves == 0 then
+                                ++ (if v.shared then
                                         " · shared timetable"
 
                                     else
@@ -1215,6 +1395,9 @@ verdictView model lvl report =
                             (if v.waiting < lvl.par then
                                 "Under par. That beats the designer's best."
 
+                             else if v.waiting == lvl.par && Levels.parProven lvl.id then
+                                "At par: the least waiting possible."
+
                              else if v.waiting == lvl.par then
                                 "At par."
 
@@ -1222,6 +1405,11 @@ verdictView model lvl report =
                                 "Solved. Par is lower: can you trim the waiting?"
                             )
                         ]
+                    , if v.shared then
+                        p [ HA.class "stamp-note" ] [ text "Not added to your record until you change it." ]
+
+                      else
+                        text ""
                     , if lvl.id < Levels.count then
                         a [ HA.href ("#p" ++ String.fromInt (lvl.id + 1)), HA.class "next-plate" ] [ text ("On to plate " ++ Clock.roman (lvl.id + 1)) ]
 
@@ -1402,7 +1590,19 @@ surveyFigure model lvl report =
             , cursor = model.cursor
             , width = chartWidth model.width
             }
-        , figcaption [ HA.class "chart-caption" ] [ text "The line as surveyed, with each train where it stands at the chart time." ]
+        , figcaption [ HA.class "survey-foot" ]
+            [ ul [ HA.class "survey-key", HA.attribute "aria-label" "Key to the trains" ]
+                (List.indexedMap
+                    (\i t ->
+                        li [ HA.class ("ink-" ++ String.fromInt t.ink) ]
+                            [ span [ HA.class "key-block", HA.attribute "aria-hidden" "true" ] [ text (String.fromInt (i + 1)) ]
+                            , text t.name
+                            ]
+                    )
+                    lvl.trains
+                )
+            , span [ HA.class "chart-caption" ] [ text "The line as surveyed, each train where it stands at the chart time." ]
+            ]
         ]
 
 
@@ -1543,7 +1743,7 @@ howTo =
             , li [] [ strong [] [ text "Red cross-hatching " ], text "marks a conflict. A small hooked tick on a train's last station is its deadline." ]
             , li [] [ strong [] [ text "To edit, " ], text "drag a thread sideways to change when it leaves, or drag a round knob to change a wait. The steppers in each train's card do the same." ]
             , li [] [ strong [] [ text "Keys: " ], kbd [] [ text "1" ], text "–", kbd [] [ text "6" ], text " pick a train, ", kbd [] [ text "←" ], kbd [] [ text "→" ], text " adjust (hold Shift for 5 min), ", kbd [] [ text "↑" ], kbd [] [ text "↓" ], text " move between its stations, ", kbd [] [ text "Enter" ], text " runs, ", kbd [] [ text "Ctrl" ], text "+", kbd [] [ text "Z" ], text " undoes." ]
-            , li [] [ strong [] [ text "Score. " ], text "Waiting is every minute a train spends beyond its earliest start and required stops. Par is the least waiting our design-time search found; it may be beatable." ]
+            , li [] [ strong [] [ text "Score. " ], text "Waiting is every minute a train spends beyond its earliest start and required stops. On plates I to VIII par is the least waiting possible: every timetable with less was tried, and none works. On IX to XIII it is the least our search found, and may be beatable." ]
             ]
         ]
 

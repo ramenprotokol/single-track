@@ -1,5 +1,6 @@
 // Browser glue for the Elm app: flags, saved progress, theme, clipboard,
-// reduced-motion changes and pointer capture. No game logic lives here.
+// reduced-motion and colour-scheme changes, scrolling the stage into view
+// and pointer capture. No game logic lives here.
 (function () {
   var KEY = 'single-track/v1';
   var motion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -17,6 +18,7 @@
   var app = window.Elm.Main.init({
     flags: {
       width: window.innerWidth,
+      height: window.innerHeight,
       reducedMotion: motion.matches,
       prefersDark: dark.matches,
       saved: saved
@@ -53,6 +55,22 @@
 
   var onMotion = function (e) { app.ports.motion.send(e.matches); };
   if (motion.addEventListener) motion.addEventListener('change', onMotion);
+
+  // A theme left on "automatic" follows the system as it changes.
+  var onScheme = function (e) { app.ports.scheme.send(e.matches); };
+  if (dark.addEventListener) dark.addEventListener('change', onScheme);
+
+  // Run brings the stage (run controls, chart and survey) fully into view,
+  // after Elm has drawn the frame. Instant under reduced motion.
+  app.ports.reveal.subscribe(function (id) {
+    requestAnimationFrame(function () {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var box = el.getBoundingClientRect();
+      if (box.top >= 0 && box.bottom <= window.innerHeight) return;
+      el.scrollIntoView({ block: 'start', behavior: motion.matches ? 'auto' : 'smooth' });
+    });
+  });
 
   // Keep a drag going when the pointer leaves the chart: capture it on the
   // chart surface, which is where Elm listens for moves.

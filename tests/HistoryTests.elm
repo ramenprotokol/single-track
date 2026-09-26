@@ -160,4 +160,55 @@ suite =
                     in
                     Expect.equal ( (Rail.check plate1 (Game.plan g)).solved, Game.moves g ) ( True, 1 )
             ]
+        , describe "Shared timetables"
+            [ test "loading a shared timetable over work in progress is one undo step" <|
+                \_ ->
+                    let
+                        mine =
+                            Game.start plate1 |> Game.set 0 (Dwell 0) 1
+
+                        loaded =
+                            Game.load sharedPlan mine
+
+                        back =
+                            Game.undo loaded
+                    in
+                    Expect.all
+                        [ \_ -> Expect.equal ( Game.plan loaded, Game.shared loaded, Game.moves loaded ) ( sharedPlan, True, 0 )
+                        , \_ -> Expect.equal ( Game.plan back, Game.shared back, Game.moves back ) ( Game.plan mine, False, 1 )
+                        , \_ -> Expect.equal (Game.plan (Game.redo back)) sharedPlan
+                        ]
+                        ()
+            , test "loading the timetable already on screen changes nothing" <|
+                \_ ->
+                    let
+                        g =
+                            Game.start plate1 |> Game.load sharedPlan
+                    in
+                    Expect.equal (Game.load sharedPlan g) g
+            , test "a fresh game is not shared" <|
+                \_ ->
+                    Game.start plate1 |> Game.shared |> Expect.equal False
+            , test "the player's first move makes a shared timetable their own" <|
+                \_ ->
+                    let
+                        g =
+                            Game.start plate1 |> Game.load sharedPlan |> Game.nudge 1 Departure 1
+                    in
+                    Expect.equal ( Game.shared g, Game.moves g, Game.shared (Game.undo g) ) ( False, 1, True )
+            , test "reset after a shared timetable is the player's own starting point" <|
+                \_ ->
+                    Game.start plate1
+                        |> Game.load sharedPlan
+                        |> Game.reset
+                        |> Expect.all [ Game.shared >> Expect.equal False, Game.plan >> Expect.equal (Rail.initialPlan plate1) ]
+            ]
         ]
+
+
+{-| Plate 1 solved with the Down local waiting 3 minutes at Brill, as in the
+link `#p1/0.3-3.0`.
+-}
+sharedPlan : Rail.Plan
+sharedPlan =
+    [ { depart = 0, dwells = [ 3 ] }, { depart = 3, dwells = [ 0 ] } ]
