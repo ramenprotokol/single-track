@@ -2,6 +2,8 @@
 
 A timetable puzzle: run trains on one track without a collision.
 
+**Live:** https://single-track.pages.dev
+
 ![Plate XIII, the grand chart, paused mid-run in a 1280 by 800 window: six ink threads cross a graphic timetable, and right under it the surveyed line shows the trains as numbered ink blocks](docs/screenshot.png)
 
 The line is drawn as a **Marey diagram**, the graphic timetable of the 1880s
