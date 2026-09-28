@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { serve } from '../scripts/serve.mjs';
@@ -40,6 +41,33 @@ test('headers: a strict CSP everywhere, long caching only for hashed assets', ()
   assert.match(cached[0], /^\/assets\/\*/);
 });
 
+// The self-hosted fonts, by source name (web/fonts/<name>.woff2).
+const FONTS = ['eb-garamond-400', 'eb-garamond-500', 'eb-garamond-600', 'eb-garamond-italic-400', 'im-fell-english-sc-400'];
+
+test('fonts ship from this site: no Google Fonts in dist/, hashed WOFF2 files the stylesheet uses', () => {
+  const assets = readdirSync(join(dist, 'assets'));
+  const css = readFileSync(join(dist, 'assets', assets.find((a) => /^style\.[0-9a-f]{10}\.css$/.test(a))), 'utf8');
+  const headers = readFileSync(join(dist, '_headers'), 'utf8');
+  for (const [name, text] of [['index.html', html()], ['the stylesheet', css], ['_headers', headers]]) {
+    assert.doesNotMatch(text, /googleapis|gstatic|fonts\.google/, `${name} must not reach Google`);
+  }
+  assert.match(headers, /Content-Security-Policy: [^\n]*; style-src 'self'; font-src 'self';/);
+  const fonts = assets.filter((a) => a.endsWith('.woff2')).sort();
+  assert.deepEqual(fonts.map((f) => f.replace(/\.[0-9a-f]{10}\.woff2$/, '')), FONTS, 'five content-hashed WOFF2 files in dist/assets/');
+  for (const f of fonts) {
+    const bytes = readFileSync(join(dist, 'assets', f));
+    assert.equal(bytes.subarray(0, 4).toString('latin1'), 'wOF2', `${f} is WOFF2`);
+    assert.equal(f.split('.')[1], createHash('sha256').update(bytes).digest('hex').slice(0, 10), `${f}: the name carries its content hash`);
+    assert.ok(css.includes(`url("${f}")`), `${f} is referenced from the stylesheet`);
+  }
+  const faces = css.match(/@font-face\s*\{[^}]*\}/g) ?? [];
+  assert.equal(faces.length, FONTS.length, 'one @font-face per file');
+  for (const face of faces) assert.match(face, /font-display: swap;/);
+  for (const [, url] of css.matchAll(/url\("([^"]+)"\)/g)) {
+    if (!url.startsWith('data:')) assert.ok(existsSync(join(dist, 'assets', url)), `${url} (from the stylesheet) exists`);
+  }
+});
+
 test('no local paths or placeholders leak into dist/', () => {
   for (const f of ['index.html', ...readdirSync(join(dist, 'assets')).map((a) => `assets/${a}`)]) {
     const text = readFileSync(join(dist, f), 'utf8');
@@ -62,6 +90,18 @@ test('third-party notices ship with the licence of every bundled Elm package', (
     assert.match(section, /Redistribution and use in source and binary forms/, `${name}: no licence text`);
   }
   assert.match(notices, /SIL Open Font License/);
+  // The self-hosted fonts: every file, its copyright line (and reserved name), and the OFL text once.
+  const fonts = readdirSync(join(dist, 'assets')).filter((a) => a.endsWith('.woff2'));
+  assert.equal(fonts.length, FONTS.length, 'the font files are in dist/assets/');
+  for (const f of fonts) assert.ok(notices.includes(`assets/${f}`), `${f} is not listed`);
+  assert.match(notices, /EB Garamond 1\.003/);
+  assert.match(notices, /Copyright 2017 The EB Garamond Project Authors \(https:\/\/github\.com\/octaviopardo\/EBGaramond12\)/);
+  assert.match(notices, /IM FELL English SC 3\.00/);
+  assert.match(notices, /Copyright \(c\) 2010, Igino Marini/);
+  assert.match(notices, /With Reserved Font Name IM FELL English SC/);
+  assert.match(notices, /SIL OPEN FONT LICENSE Version 1\.1 - 26 February 2007[\s\S]*PERMISSION & CONDITIONS[\s\S]*TERMINATION/);
+  assert.equal(notices.match(/PERMISSION & CONDITIONS/g).length, 1, 'the OFL text appears once');
+  assert.doesNotMatch(notices, /not bundled or redistributed|asks Google Fonts/);
   assert.match(html(), /Single Track/); // the page itself links it; see the browser test
 });
 
@@ -101,6 +141,10 @@ test('the local server serves dist/ with the production headers', async () => {
     const js = await fetch(`${base}/${asset}`);
     assert.equal(js.status, 200);
     assert.match(js.headers.get('content-type'), /javascript/);
+    const font = readdirSync(join(dist, 'assets')).find((a) => a.endsWith('.woff2'));
+    const fr = await fetch(`${base}/assets/${font}`);
+    assert.equal(fr.status, 200);
+    assert.equal(fr.headers.get('content-type'), 'font/woff2');
     assert.equal((await fetch(base + '/nope.js')).status, 404);
     assert.notEqual((await fetch(base + '/%2e%2e/package.json')).status, 200);
   } finally {

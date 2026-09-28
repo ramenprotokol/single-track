@@ -152,15 +152,19 @@ npm run serve      # serve dist/ on a free local port
   rules agrees with `src/Rail.elm` on 741 timetables (each plate's par
   solution, small nudges of it, and random ones).
 - **Node checks** against the built `dist/`: the page references hashed
-  assets that exist, the headers are right, the third-party notices cover
-  every bundled package, WCAG contrast of the colour tokens in both themes,
-  every pair of train inks clearly different (CIEDE2000 of 15 or more), the
-  level data and mirror cases match the design tools, the par proof for
-  plates I–IV, and the local server behaves.
-- **Headless Chrome** (over the DevTools protocol): no console errors; the
-  keyboard, a real pointer drag, undo and redo; Run with and without reduced
-  motion, with the chart and the survey drawing both inside a 1280×800 and a
-  1440×900 window while plates I, IX and XIII run, and the stamp and its
+  assets that exist, the headers are right, the fonts are served from the
+  site (no Google Fonts reference in the page, stylesheet or headers; five
+  hashed WOFF2 files, each used by the stylesheet), the third-party notices
+  cover every bundled package and font, WCAG contrast of the colour tokens in
+  both themes, every pair of train inks clearly different (CIEDE2000 of 15 or
+  more), the level data and mirror cases match the design tools, the par
+  proof for plates I–IV, and the local server behaves.
+- **Headless Chrome** (over the DevTools protocol): no console errors or CSP
+  violations; each of the five font faces loads and no request leaves the
+  page's origin; the keyboard, a real pointer drag, undo and redo; Run with
+  and without reduced motion, with the chart and the survey drawing both
+  inside a 1280×800 and a 1440×900 window while plates I, IX and XIII run,
+  and the stamp and its
   next-plate link in view at the end; a solve by hand is remembered and an
   untouched shared one is not; every plate's known solution loaded from a
   link; a link opened over work in progress is undoable, and Back after a
@@ -179,17 +183,18 @@ alone has about 6 × 10¹⁰), so their par stays heuristic.
 
 ## Running on Cloudflare (free)
 
-It is a static site. `npm run build` produces `dist/` (seven files, about
-116 KB before compression), deployable to **Cloudflare Pages** with no Worker
-and no storage. The Pages free tier serves static assets with unlimited
-requests, up to 20,000 files per site and 25 MiB per file, so this fits with
-room to spare. Progress and the theme choice live in the visitor's own
-browser (localStorage); the game sends nothing anywhere. The only
-third-party request is the typefaces, fetched from Google Fonts.
+It is a static site. `npm run build` produces `dist/` (twelve files, five of
+them fonts; about 312 KB before compression), deployable to **Cloudflare
+Pages** with no Worker and no storage. The Pages free tier serves static
+assets with unlimited requests, up to 20,000 files per site and 25 MiB per
+file, so this fits with room to spare. Progress and the theme choice live in
+the visitor's own browser (localStorage); the game sends nothing anywhere.
+The page makes no third-party requests: the typefaces are served from the
+site itself.
 
-`dist/_headers` sets a strict Content-Security-Policy (scripts only from the
-site itself; styles and fonts from Google Fonts) and a one-year immutable
-cache only for the content-hashed files under `/assets/`.
+`dist/_headers` sets a strict Content-Security-Policy (scripts, styles and
+fonts only from the site itself) and a one-year immutable cache only for the
+content-hashed files under `/assets/`, the fonts included.
 
 To deploy your own copy: `npm run build`, then
 `npx wrangler pages deploy dist --project-name single-track`. This repository
@@ -216,8 +221,8 @@ through a separate guarded script so the right account is always used.
 - **The chart is visual.** Keyboard users can do everything, and the conflict
   log, train cards and knob bar give the same information in text, but a
   screen reader hears a summary of the graph rather than the graph itself.
-- **Fonts come from Google Fonts** at run time; if that is blocked the page
-  falls back to local serif faces.
+- **EB Garamond ships as its Latin subset.** All of the page's own text is
+  Latin; any other character falls back to a local serif face.
 - **Copying the share link** uses the Clipboard API; where that is refused the
   link is shown for copying by hand. The automated tests check the link, not
   the clipboard.
@@ -236,5 +241,9 @@ through a separate guarded script so the right account is always used.
 Built by Ramen Protocol with AI assistance (Claude). MIT licence, see
 `LICENSE`. The built site bundles the Elm core packages (BSD-3-Clause); their
 notices ship as `dist/THIRD-PARTY-NOTICES.txt` and are linked from the page
-footer. The typefaces, EB Garamond and IM FELL English SC, are loaded from
-Google Fonts under the SIL Open Font License.
+footer. The typefaces, EB Garamond and IM FELL English SC (SIL Open Font
+License 1.1), are served from the site itself: the files are in `web/fonts/`
+and their licence files in `licenses/`, and the notices list each file with
+its copyright line and the licence text. EB Garamond is the Latin subset
+Google Fonts serves; IM FELL English SC is the whole font, unmodified and
+only compressed to WOFF2, because its name is a Reserved Font Name.

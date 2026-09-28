@@ -1,5 +1,6 @@
 // End-to-end checks of the built dist/ in headless Chrome: it loads without
-// console errors at desktop and phone widths, in both themes; the keyboard,
+// console errors at desktop and phone widths, in both themes, with every
+// request (the fonts included) kept to its own origin; the keyboard,
 // a real pointer drag, undo/redo, Run (with and without reduced motion, with
 // the chart and survey in view together), share links, Back, bad links and
 // the system theme all behave.
@@ -71,6 +72,20 @@ const onPlate = (n) => `${text('.plate-no')}.startsWith(${JSON.stringify(`Plate 
 run('desktop: plate I loads with its conflict and no errors', async () => {
   const page = await open({ width: 1280, height: 800, scheme: 'light' }, '#p1');
   try {
+    // The fonts come from this site: each of the five faces loads, and no
+    // request (the fonts included) leaves the page's origin.
+    const faces = ['400 16px "EB Garamond"', '500 16px "EB Garamond"', '600 16px "EB Garamond"',
+                   'italic 400 16px "EB Garamond"', '400 16px "IM Fell English SC"'];
+    assert.equal(await page.evaluate('document.fonts.size'), faces.length, 'one @font-face per self-hosted file');
+    const loaded = await page.evaluate(`Promise.all(${JSON.stringify(faces)}.map((f) => document.fonts.load(f).then((l) => l.length)))`);
+    assert.deepEqual(loaded, faces.map(() => 1), 'each face resolves to one loaded file');
+    for (const f of faces) assert.equal(await page.evaluate(`document.fonts.check(${JSON.stringify(f)})`), true, f);
+    assert.equal(await page.evaluate("[...document.fonts].filter((f) => f.status === 'loaded').length"), faces.length);
+    const offsite = await page.evaluate("performance.getEntriesByType('resource').map((e) => e.name).filter((u) => !u.startsWith(location.origin + '/'))");
+    assert.deepEqual(offsite, [], 'every request stays on this origin');
+    const fontFiles = await page.evaluate("performance.getEntriesByType('resource').map((e) => new URL(e.name).pathname).filter((p) => /^\\/assets\\/[\\w-]+\\.[0-9a-f]{10}\\.woff2$/.test(p))");
+    assert.equal(new Set(fontFiles).size, faces.length, `fonts fetched from /assets/: ${fontFiles.join(', ')}`);
+
     assert.match(await page.evaluate('document.title'), /First Meeting/);
     assert.equal(await page.evaluate(count('svg.marey .thread')), 2);
     assert.equal(await page.evaluate(count('svg.marey .conflict')), 1);
